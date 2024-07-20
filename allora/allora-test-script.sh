@@ -1,21 +1,18 @@
 #!/bin/bash
 
-# Function to print colored messages
+URL="https://allora-api.testnet.allora.network/cosmos/base/tendermint/v1beta1/blocks/latest"
+
 print_color() {
     local color_code=$1
     shift
     echo -e "\e[${color_code}m$@\e[0m"
 }
 
-# Read user inputs
-read -p "Enter the Allora API URL: " ALLORA_API_URL
-read -p "Enter the topic: " TOPIC
-read -p "Enter the sleep duration (in seconds): " SLEEP_DURATION
-
-while true; do
-    height=$(curl -s "$ALLORA_API_URL" | jq -r '.block.header.height')
+execute_curl() {
+    local topic=$1
+    local height=$2
     
-    print_color "32" "Height: $height"
+    echo "Calling topic $topic..."
     
     response=$(curl -s --location 'http://localhost:6000/api/v1/functions/execute' \
         --header 'Content-Type: application/json' \
@@ -23,7 +20,7 @@ while true; do
         "function_id": "bafybeigpiwl3o73zvvl6dxdqu7zqcub5mhg65jiky2xqb4rdhfmikswzqm",
         "method": "allora-inference-function.wasm",
         "parameters": null,
-        "topic": "'"$TOPIC"'",
+        "topic": "'"$topic"'",
         "config": {
             "env_vars": [
                 {
@@ -44,7 +41,17 @@ while true; do
         }
     }')
     
-    print_color "34" "Response: $response"
+    print_color "34" "Response from topic $topic: $response"
+}
+
+while true; do
+    height=$(curl -s $URL | jq -r '.block.header.height')
     
-    sleep "$SLEEP_DURATION"
+    print_color "32" "Height: $height"
+    
+    for topic in {1..6}; do
+        execute_curl $topic $height
+        sleep 15
+    done
+    sleep 15
 done
